@@ -3,7 +3,7 @@
 ### Instructions for working on this project: 
 
 1. Open Terminal
-2. Enter these commands:
+2. Enter these commands:  
     ```
     cd /home  
     sudo mkdir git-repos  
@@ -28,7 +28,6 @@
     git push origin MY_BRANCH_NAME  
     ```
     Tip: use git branch to see branch names
-
 
 6. Finally, when you are done with the feature and want to merge the changes, go to the repo page on GitHub.
 7. There should be a section called "Your recently pushed branches:", click Compare & pull request next to the branch.
