@@ -8,7 +8,7 @@
     cd /home  
     sudo mkdir git-repos  
     sudo chown YOUR_USERNAME /home/git-repos  
-    cd git-repos git clone https://github.com/Scott-Meyer/UCD-OS
+    cd git-repos git clone https://github.com/Scott-Meyer/UCD-OS  
     ```
 3. Go to https://github.com/ivogeorg/os-playground/blob/master/pintos-with-qemu.md and follow steps 3 and 5.
     
