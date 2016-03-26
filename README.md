@@ -21,8 +21,7 @@
 
 5. Then make any changes you want, commiting them as you go:  
     ```
-    git add *  
-    git commit -m "Commit message"
+    git commit -a -m "Commit message"
     ```
 
 5. When you are ready to upload your changes to GitHub:
