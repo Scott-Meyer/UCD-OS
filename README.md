@@ -30,9 +30,9 @@
     Tip: use git branch to see branch names
 
 
-6. Finally, when you are done with the feature and want to merge the changes, go to the repo page on GitHub. 
-7. There should be a section called "Your recently pushed branches:", click Compare & pull request next to the branch. 
-8. Write any kind of title and description you want, and then click Create pull request. 
+6. Finally, when you are done with the feature and want to merge the changes, go to the repo page on GitHub.
+7. There should be a section called "Your recently pushed branches:", click Compare & pull request next to the branch.
+8. Write any kind of title and description you want, and then click Create pull request.
 9. If there are no errors and you're confident in the pull request, click Merge to master.
 
 To test your pintos builds, follow instruction #8 or the "Run the tests" section outlined here: https://github.com/ivogeorg/os-playground/blob/master/pintos-with-qemu.md
