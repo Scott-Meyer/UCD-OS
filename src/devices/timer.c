@@ -107,6 +107,10 @@ timer_sleep (int64_t ticks)
 
   // Turn interrupts back on
   intr_set_level (old_level);
+
+  // TODO: Put thread into a "sleep list", in descending order
+  // I think this should be after turning interrupts back on,
+  // but I'm not sure. Something to think about.
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -185,6 +189,10 @@ timer_interrupt (struct intr_frame *args UNUSED)
 {
   ticks++;
   thread_tick ();
+
+  // TODO: Check the "sleep list" for threads to wake
+  // Wake any eligible threads and remove from list
+  // Interrupts are already off here, no need to turn off
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
