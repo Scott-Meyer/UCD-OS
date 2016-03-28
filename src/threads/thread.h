@@ -90,6 +90,10 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
+    /* Used for timer_sleep */
+    int64_t sleep_ticks_left;
+    struct semaphore timer_sleep_semaphore;
+
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
