@@ -20,6 +20,9 @@
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
 
+/* Sleeping threads list */
+struct list sleeping_threads;
+
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -37,6 +40,9 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+
+  // Init of the sleeping_threads list
+  list_init (&sleeping_threads);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -103,14 +109,28 @@ timer_sleep (int64_t ticks)
 
   // Assign ticks to the thread, and set thread to sleep
   t->sleep_ticks_left = ticks;
-  sema_down(t->timer_sleep_semaphore);
+  sema_down(&t->timer_sleep_semaphore);
 
   // Turn interrupts back on
   intr_set_level (old_level);
 
-  // TODO: Put thread into a "sleep list", in descending order
-  // I think this should be after turning interrupts back on,
-  // but I'm not sure. Something to think about.
+  // Add thread to sleep list
+  // TODO: Should this be done when interrupts are off? I think not
+  // but I'm not sure
+  list_insert_ordered (&sleeping_threads, &t->elem, thread_sleep_less, NULL);
+}
+
+/* Returns true if thread B sleep ticks is less than thread A, false
+   otherwise.
+   This is used to order the sleeping_threads list in descending order. */
+static bool
+thread_sleep_less (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux UNUSED) 
+{
+  const struct thread *a = list_entry (a_, struct thread, elem);
+  const struct thread *b = list_entry (b_, struct thread, elem);
+  
+  return b->sleep_ticks_left < a->sleep_ticks_left;
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
