@@ -208,7 +208,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   thread_tick ();
 
-  // Iterate while wake_tick is 0 (wake and remove)
+  // Iterate through the sleeping threads list (which is ordered)
   struct list_elem *e;
   for (e = list_begin (&sleeping_threads); e != list_end (&sleeping_threads);
      e = list_next (e))
@@ -219,7 +219,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
     if (ticks <= t->wake_tick)
       break;
 
-    // The sleep time is 0: wake thread and remove from list
+    // The wake tick has been reached: wake thread and remove from list
     list_remove (&t->sleep_list_elem);
     thread_unblock(t);
   }
