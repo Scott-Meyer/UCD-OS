@@ -106,17 +106,16 @@ timer_sleep (int64_t ticks)
   // Get a pointer to the thread we need to sleep
   struct thread *t = thread_current ();
 
-  // Disable interrupts while we assign tick value and add to list
+  // Disable interrupts while we process this thread
   enum intr_level old_level = intr_disable ();
   // Assign wakeup tick value to the thread
   t->wake_tick = timer_ticks() + ticks;
   // Add thread to sleep  list
   list_insert_ordered (&sleeping_threads, &t->sleep_list_elem, thread_sleep_less, NULL);
+  // Block thread
+  thread_block ();
   // Turn interrupts back on
   intr_set_level (old_level);
-
-  // Block thread
-  sema_down(&t->timer_sleep_semaphore);
 }
 
 /* Returns true if thread A sleep ticks is less than thread B, false
@@ -215,18 +214,14 @@ timer_interrupt (struct intr_frame *args UNUSED)
      e = list_next (e))
   {
     struct thread *t = list_entry (e, struct thread, sleep_list_elem);
-    // msg ("IN LIST TRAVERSAL LOOP");
-    // msg ("Thread sleep ticks value: %d", t->wake_tick);
-    // msg ("Total timer ticks value: %d", ticks);
-    // If the wake_tick is not 0 then stop processing
+
+    // If the wake_tick has not been reached, then stop
     if (ticks <= t->wake_tick)
       break;
 
     // The sleep time is 0: wake thread and remove from list
-    // sema_up (&t->timer_sleep_semaphore);
     list_remove (&t->sleep_list_elem);
-    sema_up (&t->timer_sleep_semaphore);
-    //thread_unblock(t);
+    thread_unblock(t);
   }
 }
 
