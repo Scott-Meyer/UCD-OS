@@ -11,4 +11,5 @@ make
 cd /home/git-repos/UCD-OS/src/threads
 make
 sudo echo 'export PATH=/home/git-repos/UCD-OS/src/utils:$PATH' >> /home/vagrant/.profile
+sudo echo 'cd /home/git-repos/UCD-OS/src' >> /home/vagrant/.profile
 source /home/vagrant/.profile
