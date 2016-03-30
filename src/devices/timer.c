@@ -100,7 +100,7 @@ timer_sleep (int64_t ticks)
   ASSERT (intr_get_level () == INTR_ON);
 
   // Make sure ticks is a positive value
-  if (ticks < 1)
+  if (ticks < 1) 
     return;
 
   // Get a pointer to the thread we need to sleep
@@ -112,19 +112,15 @@ timer_sleep (int64_t ticks)
   // Assign ticks to the thread, and set thread to sleep
   t->sleep_ticks_left = ticks;
   sema_down(&t->timer_sleep_semaphore);
-
-  // Turn interrupts back on
-  intr_set_level (old_level);
-
   // Add thread to sleep list
-  // TODO: Should this be done when interrupts are off? I think not
-  // but I'm not sure
   list_insert_ordered (&sleeping_threads, &t->elem, thread_sleep_less, NULL);
+  // Turn interrupts back on
+  intr_set_level (old_level);  
 }
 
-/* Returns true if thread B sleep ticks is less than thread A, false
+/* Returns true if thread A sleep ticks is less than thread B, false
    otherwise.
-   This is used to order the sleeping_threads list in descending order. */
+   This is used to order the sleeping_threads list in ascending order. */
 static bool
 thread_sleep_less (const struct list_elem *a_, const struct list_elem *b_,
             void *aux UNUSED) 
@@ -132,7 +128,7 @@ thread_sleep_less (const struct list_elem *a_, const struct list_elem *b_,
   const struct thread *a = list_entry (a_, struct thread, elem);
   const struct thread *b = list_entry (b_, struct thread, elem);
   
-  return b->sleep_ticks_left < a->sleep_ticks_left;
+  return a->sleep_ticks_left < b->sleep_ticks_left;
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
