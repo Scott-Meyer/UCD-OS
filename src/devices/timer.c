@@ -113,9 +113,9 @@ timer_sleep (int64_t ticks)
   t->sleep_ticks_left = ticks;
   sema_down(&t->timer_sleep_semaphore);
   // Add thread to sleep list
-  list_insert_ordered (&sleeping_threads, &t->elem, thread_sleep_less, NULL);
+  list_insert_ordered (&sleeping_threads, &t->sleep_list_elem, thread_sleep_less, NULL);
   // Turn interrupts back on
-  intr_set_level (old_level);  
+  intr_set_level (old_level);
 }
 
 /* Returns true if thread A sleep ticks is less than thread B, false
@@ -208,9 +208,21 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   thread_tick ();
 
-  // TODO: Check the "sleep list" for threads to wake
-  // Wake any eligible threads and remove from list
-  // Interrupts are already off here, no need to turn off
+  // Iterate while sleep_ticks_left is 0 (wake and remove)
+  struct list_elem *e;
+  for (e = list_begin (&foo_list); e != list_end (&foo_list);
+     e = list_next (e))
+  {
+    struct thread *t = list_entry (e, struct thread, elem);
+
+    // If the sleep_ticks_left is not 0 then stop processing
+    if (t->sleep_ticks_left != 0)
+      break;
+
+    // The sleep time is 0: wake thread and remove from list
+    sema_up (&t->timer_sleep_semaphore);
+    list_remove (&t->sleep_list_elem);
+  }
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
