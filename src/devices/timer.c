@@ -106,16 +106,17 @@ timer_sleep (int64_t ticks)
   // Get a pointer to the thread we need to sleep
   struct thread *t = thread_current ();
 
-  // Disable interrupts while sleeping thread
+  // Disable interrupts while we assign tick value and add to list
   enum intr_level old_level = intr_disable ();
-
-  // Assign ticks to the thread, and set thread to sleep
-  t->sleep_ticks_left = ticks;
-  sema_down(&t->timer_sleep_semaphore);
-  // Add thread to sleep list
+  // Assign wakeup tick value to the thread
+  t->wake_tick = timer_ticks() + ticks;
+  // Add thread to sleep  list
   list_insert_ordered (&sleeping_threads, &t->sleep_list_elem, thread_sleep_less, NULL);
   // Turn interrupts back on
   intr_set_level (old_level);
+
+  // Block thread
+  sema_down(&t->timer_sleep_semaphore);
 }
 
 /* Returns true if thread A sleep ticks is less than thread B, false
@@ -125,10 +126,10 @@ static bool
 thread_sleep_less (const struct list_elem *a_, const struct list_elem *b_,
             void *aux UNUSED) 
 {
-  const struct thread *a = list_entry (a_, struct thread, elem);
-  const struct thread *b = list_entry (b_, struct thread, elem);
+  const struct thread *a = list_entry (a_, struct thread, sleep_list_elem);
+  const struct thread *b = list_entry (b_, struct thread, sleep_list_elem);
   
-  return a->sleep_ticks_left < b->sleep_ticks_left;
+  return a->wake_tick < b->wake_tick;
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -208,20 +209,24 @@ timer_interrupt (struct intr_frame *args UNUSED)
   ticks++;
   thread_tick ();
 
-  // Iterate while sleep_ticks_left is 0 (wake and remove)
+  // Iterate while wake_tick is 0 (wake and remove)
   struct list_elem *e;
-  for (e = list_begin (&foo_list); e != list_end (&foo_list);
+  for (e = list_begin (&sleeping_threads); e != list_end (&sleeping_threads);
      e = list_next (e))
   {
-    struct thread *t = list_entry (e, struct thread, elem);
-
-    // If the sleep_ticks_left is not 0 then stop processing
-    if (t->sleep_ticks_left != 0)
+    struct thread *t = list_entry (e, struct thread, sleep_list_elem);
+    // msg ("IN LIST TRAVERSAL LOOP");
+    // msg ("Thread sleep ticks value: %d", t->wake_tick);
+    // msg ("Total timer ticks value: %d", ticks);
+    // If the wake_tick is not 0 then stop processing
+    if (ticks <= t->wake_tick)
       break;
 
     // The sleep time is 0: wake thread and remove from list
-    sema_up (&t->timer_sleep_semaphore);
+    // sema_up (&t->timer_sleep_semaphore);
     list_remove (&t->sleep_list_elem);
+    sema_up (&t->timer_sleep_semaphore);
+    //thread_unblock(t);
   }
 }
 

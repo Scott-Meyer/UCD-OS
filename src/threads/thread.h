@@ -92,7 +92,7 @@ struct thread
     struct list_elem allelem;           /* List element for all threads list. */
 
     /* Used for timer_sleep */
-    int64_t sleep_ticks_left;
+    int64_t wake_tick;
     struct semaphore timer_sleep_semaphore;
     struct list_elem sleep_list_elem;
 
