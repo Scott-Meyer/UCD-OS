@@ -107,7 +107,7 @@ timer_sleep (int64_t ticks)
   struct thread *t = thread_current ();
 
   // Disable interrupts while sleeping thread
-  old_level = intr_disable ();
+  enum intr_level old_level = intr_disable ();
 
   // Assign ticks to the thread, and set thread to sleep
   t->sleep_ticks_left = ticks;
