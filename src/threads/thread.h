@@ -93,7 +93,6 @@ struct thread
 
     /* Used for timer_sleep */
     int64_t wake_tick;
-    struct semaphore timer_sleep_semaphore;
     struct list_elem sleep_list_elem;
 
     /* Shared between thread.c and synch.c. */
