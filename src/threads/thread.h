@@ -94,6 +94,7 @@ struct thread
     /* Used for timer_sleep */
     int64_t sleep_ticks_left;
     struct semaphore timer_sleep_semaphore;
+    struct list_elem sleep_list_elem;
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
