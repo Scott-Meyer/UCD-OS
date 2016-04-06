@@ -363,7 +363,10 @@ thread_set_priority (int new_priority)
   //thread_current ()->priority = new_priority;
   if (thread_current()->status == THREAD_RUNNING) {
     if (new_priority > thread_current()->priority) {
+      thread_current()->priority = new_priority;
       thread_yield();
+    } else {
+      thread_current()->priority = new_priority;
     }
   } else {
       msg ("going to loop through");
@@ -376,6 +379,7 @@ thread_set_priority (int new_priority)
           list_remove (e);
         }
       }
+      thread_current()->priority = new_priority;
       thread_insert_ready();
   }
 }
