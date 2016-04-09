@@ -64,12 +64,35 @@ static void kernel_thread (thread_func *, void *aux);
 static void idle (void *aux UNUSED);
 static struct thread *running_thread (void);
 static struct thread *next_thread_to_run (void);
+bool thread_priority_compair (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED);
 static void init_thread (struct thread *, const char *name, int priority);
 static bool is_thread (struct thread *) UNUSED;
 static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+
+bool
+thread_priority_compair (const struct list_elem *a, const struct list_elem *b, void *aux UNUSED)
+{
+  struct thread *thread_a = list_entry (a, struct thread, elem);
+  struct thread *thread_b = list_entry (b, struct thread, elem);
+  msg ("Compairing");
+  if (thread_a->priority < thread_b->priority)
+    return true;
+  else
+    return false;
+}
+void
+thread_insert_ready (void)
+{
+  struct thread *t = thread_current ();
+  list_insert_ordered (&ready_list, &t->elem, thread_priority_compair, NULL);
+  t->status = THREAD_READY;
+  struct thread *thread_head = list_entry (list_begin(&ready_list), struct thread, elem);
+  if (&t->priority > thread_head->priority)
+    schedule();
+}
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -237,8 +260,9 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
-  t->status = THREAD_READY;
+  //list_insert_ordered (&ready_list, &t->elem, thread_priority_compair, NULL);
+  //t->status = THREAD_READY;
+  thread_insert_ready();
   intr_set_level (old_level);
 }
 
@@ -308,8 +332,9 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
-  cur->status = THREAD_READY;
+    thread_insert_ready();
+    //list_insert_ordered (&ready_list, &cur->elem, thread_priority_compair, NULL);
+  //cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
 }
@@ -335,7 +360,28 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  thread_current ()->priority = new_priority;
+  //thread_current ()->priority = new_priority;
+  if (thread_current()->status == THREAD_RUNNING) {
+    if (new_priority > thread_current()->priority) {
+      thread_current()->priority = new_priority;
+      thread_yield();
+    } else {
+      thread_current()->priority = new_priority;
+    }
+  } else {
+      msg ("going to loop through");
+      struct list_elem *e;
+      for (e = list_begin (&ready_list); e!= list_end (&ready_list);
+           e = list_next (e))
+      {
+        struct thread *thread_e = list_entry (e, struct thread, elem);
+        if (thread_e == thread_current()) {
+          list_remove (e);
+        }
+      }
+      thread_current()->priority = new_priority;
+      thread_insert_ready();
+  }
 }
 
 /* Returns the current thread's priority. */
@@ -493,7 +539,8 @@ next_thread_to_run (void)
   if (list_empty (&ready_list))
     return idle_thread;
   else
-    return list_entry (list_pop_front (&ready_list), struct thread, elem);
+    return idle_thread;
+    //return list_entry (list_pop_front (&ready_list), struct thread, elem);
 }
 
 /* Completes a thread switch by activating the new thread's page
