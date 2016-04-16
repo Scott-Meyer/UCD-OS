@@ -204,6 +204,9 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
+  
+  /* Make sure highest priority thread is running.
+     This is needed in case this thread has higher priority. */
   check_thread_priority ();
 
   return tid;
@@ -623,7 +626,10 @@ void check_thread_priority (void) {
   // Disable interrupts while we process
   enum intr_level old_level = intr_disable ();
   
+  // Only process if the ready_list has items in it
   if (!list_empty(&ready_list)) {
+    
+    // Get current thread and first thread in ready_list
     struct thread *cur = thread_current ();
     struct thread *first_thread = list_entry (
             list_begin(&ready_list), struct thread, elem);
