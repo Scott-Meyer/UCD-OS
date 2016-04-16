@@ -73,6 +73,7 @@ static tid_t allocate_tid (void);
 static bool
 thread_priority_less (const struct list_elem *a_, const struct list_elem *b_,
             void *aux UNUSED);
+void check_thread_priority (void);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -203,6 +204,7 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
+  check_thread_priority ();
 
   return tid;
 }
@@ -344,15 +346,8 @@ void thread_set_priority (int new_priority) {
   // Disable interrupts while we process this thread
   enum intr_level old_level = intr_disable ();
   
-  struct thread *cur = thread_current ();
-  cur->priority = new_priority;
-  
-  // If no longer highest priority, yield
-  struct thread *first_thread = list_entry (
-          list_begin(&ready_list), struct thread, elem);
-  if (cur->priority < first_thread->priority) {
-    thread_yield ();
-  }
+  thread_current ()->priority = new_priority;
+  check_thread_priority ();
   
   // Turn interrupts back on
   intr_set_level (old_level);
@@ -621,4 +616,24 @@ thread_priority_less (const struct list_elem *a_, const struct list_elem *b_,
   const struct thread *b = list_entry (b_, struct thread, elem);
   
   return a->priority > b->priority;
+}
+
+/* Make sure highest priority thread is running */
+void check_thread_priority (void) {
+  // Disable interrupts while we process
+  enum intr_level old_level = intr_disable ();
+  
+  if (!list_empty(&ready_list)) {
+    struct thread *cur = thread_current ();
+    struct thread *first_thread = list_entry (
+            list_begin(&ready_list), struct thread, elem);
+    
+    // If current thread is no longer highest priority, yield
+    if (cur->priority < first_thread->priority) {
+      thread_yield ();
+    }
+  }
+  
+  // Turn interrupts back on
+  intr_set_level (old_level);
 }
