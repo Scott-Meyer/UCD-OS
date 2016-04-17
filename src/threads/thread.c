@@ -70,10 +70,6 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
-static bool
-thread_priority_less (const struct list_elem *a_, const struct list_elem *b_,
-            void *aux UNUSED);
-void check_thread_priority (void);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -611,7 +607,7 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 /* Returns true if thread A priority is more than thread B, false
    otherwise.
    This is used to order the ready_list threads in descending order. */
-static bool
+bool
 thread_priority_less (const struct list_elem *a_, const struct list_elem *b_,
             void *aux UNUSED) 
 {
