@@ -103,6 +103,10 @@ struct thread
     struct thread *donated_to;
     int base_priority;
 
+    /* mlfqs */
+    int nice;
+    int recent_cpu;
+
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -162,5 +166,11 @@ bool priority_less (const struct list_elem *a_, const struct list_elem *b_,
 void check_thread_priority (void);
 void donate_priority (struct thread *t, struct thread *f);
 //void remove_donation (struct thread *t, struct lock *lock);
+void mlfqs_calculate_priority_all (void);
+void mlfqs_calculate_priority (struct thread *t, void *aux UNUSED);
+void mlfqs_sort_ready_list (void);
+void mlfqs_calculate_load_avg (void);
+void mlfqs_recalculate_recent_cpu_all(void);
+void mlfqs_recalculate_recent_cpu(struct thread * t, void *aux UNUSED);
 
 #endif /* threads/thread.h */
