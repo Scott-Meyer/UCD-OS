@@ -216,7 +216,7 @@ timer_interrupt (struct intr_frame *args UNUSED)
     struct thread *t = list_entry (e, struct thread, sleep_list_elem);
 
     // If the wake_tick has not been reached, then stop
-    if (ticks <= t->wake_tick)
+    if (ticks < t->wake_tick)
       break;
 
     // The wake tick has been reached: wake thread and remove from list
