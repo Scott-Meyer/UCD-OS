@@ -787,7 +787,16 @@ void remove_donation (struct thread *t, struct lock *lock) {
 }
 
 void mlfqs_calculate_priority_all (void) {
-  thread_foreach(mlfqs_calculate_priority, 0);
+  //thread_foreach(mlfqs_calculate_priority, 0);
+  //Attempt to not use foreach for speed (problems with mlfqs-nice-10)
+  struct list_elem *e;
+  struct thread *t;
+  for (e = list_begin (&all_list); e != list_end (&all_list); e = list_next (e)) {
+    t = list_entry(e, struct thread, allelem);
+    int a = fix_to_int_round_down(fix_div_int(t->recent_cpu, 4));
+    int priority = 63 - (a) - (t->nice * 2);
+    t->priority = priority;
+  }
 }
 
 void mlfqs_calculate_priority (struct thread *t, void *aux UNUSED) {
