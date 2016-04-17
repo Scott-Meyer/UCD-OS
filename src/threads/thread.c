@@ -200,6 +200,10 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
+  
+  /* Make sure highest priority thread is running.
+     This is needed in case this thread has higher priority. */
+  check_thread_priority ();
 
   return tid;
 }
@@ -237,7 +241,9 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
+  //list_push_back (&ready_list, &t->elem);
+  //insert_to_ready_list (&t->elem);
+  list_insert_ordered (&ready_list, &t->elem, thread_priority_less, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -308,7 +314,9 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered (&ready_list, &cur->elem, thread_priority_less, NULL);
+    //list_push_back (&ready_list, &cur->elem);
+    //insert_to_ready_list (&cur->elem);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -331,18 +339,31 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
-/* Sets the current thread's priority to NEW_PRIORITY. */
-void
-thread_set_priority (int new_priority) 
-{
+/* Sets the current thread's priority to new_priority. If the current thread
+no longer has the highest priority, yields. */
+void thread_set_priority (int new_priority) {
+  // Disable interrupts while we process this thread
+  enum intr_level old_level = intr_disable ();
+  
   thread_current ()->priority = new_priority;
+  check_thread_priority ();
+  
+  // Turn interrupts back on
+  intr_set_level (old_level);
 }
 
-/* Returns the current thread's priority. */
-int
-thread_get_priority (void) 
-{
-  return thread_current ()->priority;
+/* Returns the current thread's priority. In the presence of priority donation,
+returns the higher (donated) priority. */
+int thread_get_priority (void) {
+  // Disable interrupts while we process this thread
+  enum intr_level old_level = intr_disable ();
+  
+  int priority = thread_current()->priority;
+  
+  // Turn interrupts back on
+  intr_set_level (old_level);
+  
+  return priority;
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -582,3 +603,39 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+/* Returns true if thread A priority is more than thread B, false
+   otherwise.
+   This is used to order the ready_list threads in descending order. */
+bool
+thread_priority_less (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux UNUSED) 
+{
+  const struct thread *a = list_entry (a_, struct thread, elem);
+  const struct thread *b = list_entry (b_, struct thread, elem);
+  
+  return a->priority > b->priority;
+}
+
+/* Make sure highest priority thread is running */
+void check_thread_priority (void) {
+  // Disable interrupts while we process
+  enum intr_level old_level = intr_disable ();
+  
+  // Only process if the ready_list has items in it
+  if (!list_empty(&ready_list)) {
+    
+    // Get current thread and first thread in ready_list
+    struct thread *cur = thread_current ();
+    struct thread *first_thread = list_entry (
+            list_begin(&ready_list), struct thread, elem);
+    
+    // If current thread is no longer highest priority, yield
+    if (cur->priority < first_thread->priority) {
+      thread_yield ();
+    }
+  }
+  
+  // Turn interrupts back on
+  intr_set_level (old_level);
+}
