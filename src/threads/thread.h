@@ -92,6 +92,11 @@ struct thread
 
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
+    
+    /* Donations */
+    struct list donations_received;
+    struct thread *donated_to;
+    int base_priority;
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
@@ -101,6 +106,12 @@ struct thread
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
   };
+  
+struct priority
+    {
+        int priority;
+        struct list_elem elem;
+    };
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
@@ -141,6 +152,9 @@ int thread_get_load_avg (void);
 /* Added functions */
 bool thread_priority_less (const struct list_elem *a_, const struct list_elem *b_,
             void *aux UNUSED);
+bool priority_less (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux UNUSED);
 void check_thread_priority (void);
+void donate_priority (struct thread *t);
 
 #endif /* threads/thread.h */

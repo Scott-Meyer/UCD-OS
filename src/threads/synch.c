@@ -202,6 +202,12 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
   
+  if (lock->holder != NULL) {
+    // Someone has the lock, we need to donate to them
+    // Donate priority to the thread holding the lock
+    //donate_priority (&lock->holder);
+  }
+  
   sema_down (&lock->semaphore);
   lock->holder = thread_current ();
 }
