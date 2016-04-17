@@ -669,9 +669,6 @@ void refresh_priority (struct thread *t) {
 
     if (firstDonatedPrio->priority > t->priority) {
       t->priority = firstDonatedPrio->priority;
-      //list_pop_front(&t->donations_received);
-      //msg ("Set to donated priority: %d", firstDonatedPrio->priority);
-      //msg ("After setting, base_priority: %d", t->base_priority);
     }
       
     if (t->base_priority > t->priority)
@@ -679,15 +676,11 @@ void refresh_priority (struct thread *t) {
   } else {
     if (t->base_priority != t->priority)
       t->priority = t->base_priority;
-    //msg ("Just set back to base priority");
   }
 }
 
 /* Donate priority to thread, and linked threads */
 void donate_priority (struct thread *t, struct thread *f) {
-  //enum intr_level old_level = intr_disable ();
-  //struct thread *cur = thread_current ();
-  //msg ("T: %d", t);
   
   // Check if current thread has higher priority
   // Or if the target thread is using a donated priority
@@ -696,34 +689,20 @@ void donate_priority (struct thread *t, struct thread *f) {
     f->donated_to = t;
     struct priority *prioStruct;
     prioStruct = palloc_get_page (PAL_ZERO);
-    //msg ("Made struct");
-    //msg ("F priority: %d", f->priority);
     prioStruct->priority = f->priority;
-    //msg ("assigned priority");
-    //msg ("Inserting priority: %d", prioStruct.priority);
     list_insert_ordered (&t->donations_received, &prioStruct->elem, priority_less, NULL);
-    //msg ("Inserted list elem: %d", &prioStruct->elem);
-    //msg ("Inserted priority: %d", prioStruct->priority);
   }
   
     refresh_priority (t);
-    //msg ("Donated to: %d", t->donated_to);
     if (t->donated_to != NULL)
       donate_priority (t->donated_to, t);
   
-  //intr_set_level (old_level);
 }
 
 /* Rmove priority from thread, and linked threads */
 void remove_donation (struct thread *t, struct lock *lock) {
-  // change refresh to pop the priority so it isn't on the list
-  // should then just need to trigger a refresh here I think
-  // wait but then the overwriting won't work
-  //enum intr_level old_level = intr_disable ();
-  //thread_current ()->donated_to = NULL;
   
   if (!list_empty(&t->donations_received)) {
-    //thread_unblock (list_entry (list_pop_front (&sema->waiters), struct thread, elem));
                                 
     struct list_elem *e = list_begin(&lock->semaphore.waiters);
     struct list_elem *next;
@@ -731,38 +710,24 @@ void remove_donation (struct thread *t, struct lock *lock) {
     
     while (e != list_end(&lock->semaphore.waiters)) {
       struct thread *temp = list_entry(e, struct thread, elem);
-      //msg ("Temp thread prio: %d", temp->priority);
-      //msg ("Temp base prio: %d", temp->base_priority);
+
       if (temp->priority > t->base_priority) {
         struct list_elem *le = list_begin(&t->donations_received);
         while (le != list_end(&t->donations_received)) {
-          //msg ("The list element: %d", le);
           struct priority *p = list_entry(le, struct priority, elem);
-          //msg ("Donated priority found: %d", p->priority);
-          //msg ("Waiter priority: %d", temp->priority);
-          //msg ("Waiter base priority: %d", temp->base_priority);
+
           if (temp->priority == p->priority) {
             le = list_remove(le);
-            //msg ("Removed priority: %d", p->priority);
-            //le = list_next(le);
           } else if (temp->priority != temp->base_priority) {
             le = list_remove(le);
           } else {
             le = list_next(le);
-            //msg ("Did not remove priority: %d", p->priority);
           }
         }
-        //struct priority *firstDonatedPrio = list_entry (list_pop_front(&t->donations_received), struct priority, elem);
-        //msg ("Popped priority: %d", firstDonatedPrio->priority);
       }
       e = list_next(e);
-      //msg ("Got a waiting thread");
     }
-    //msg ("Exiting the waiters loop");
     
-    //struct priority *firstDonatedPrio = list_entry (list_pop_front(&t->donations_received), struct priority, elem);
-    //msg ("Base priority: %d", t->base_priority);
-    //msg ("Cur thread base: %d", thread_current()->base_priority);
     t->priority = t->base_priority;
     
     refresh_priority (t);
@@ -770,9 +735,4 @@ void remove_donation (struct thread *t, struct lock *lock) {
     t->priority = t->base_priority;
     
     refresh_priority (t);
-  //refresh_priority (t);
-  
-  //if (t->donated_to != NULL)
-    //remove_donation (t->donated_to, lock);
-  //intr_set_level (old_level);
 }
