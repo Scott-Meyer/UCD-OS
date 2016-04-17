@@ -666,13 +666,20 @@ void check_thread_priority (void) {
 void refresh_priority (struct thread *t) {
   if (!list_empty(&t->donations_received)) {
     struct priority *firstDonatedPrio = list_entry (list_begin(&t->donations_received), struct priority, elem);
-    if (firstDonatedPrio->priority > t->priority)
+
+    if (firstDonatedPrio->priority > t->priority) {
       t->priority = firstDonatedPrio->priority;
+      //list_pop_front(&t->donations_received);
+      //msg ("Set to donated priority: %d", firstDonatedPrio->priority);
+      //msg ("After setting, base_priority: %d", t->base_priority);
+    }
+      
     if (t->base_priority > t->priority)
       t->priority = t->base_priority;
   } else {
     if (t->base_priority != t->priority)
       t->priority = t->base_priority;
+    //msg ("Just set back to base priority");
   }
 }
 
@@ -685,7 +692,7 @@ void donate_priority (struct thread *t) {
   // Or if the target thread is using a donated priority
   if (cur->priority > t->priority || t->base_priority != t->priority) {
     // Donate
-    t->donated_to = cur;
+    cur->donated_to = t;
     struct priority prioStruct;
     prioStruct.priority = cur->priority;
 
@@ -696,5 +703,45 @@ void donate_priority (struct thread *t) {
       donate_priority (t->donated_to);
   }
   
+  //intr_set_level (old_level);
+}
+
+/* Rmove priority from thread, and linked threads */
+void remove_donation (struct thread *t, struct lock *lock) {
+  // change refresh to pop the priority so it isn't on the list
+  // should then just need to trigger a refresh here I think
+  // wait but then the overwriting won't work
+  //enum intr_level old_level = intr_disable ();
+  //thread_current ()->donated_to = NULL;
+  
+  if (!list_empty(&t->donations_received)) {
+    //thread_unblock (list_entry (list_pop_front (&sema->waiters), struct thread, elem));
+                                
+    struct list_elem *e = list_begin(&lock->semaphore.waiters);
+    struct list_elem *next;
+    struct thread *temp = list_entry(e, struct thread, elem);
+    
+    while (e != list_end(&lock->semaphore.waiters)) {
+      struct thread *temp = list_entry(e, struct thread, elem);
+      //msg ("Temp thread prio: %d", temp->priority);
+      if (temp->priority > t->base_priority) {
+        struct priority *firstDonatedPrio = list_entry (list_pop_front(&t->donations_received), struct priority, elem);
+        //msg ("Popped priority: %d", firstDonatedPrio->priority);
+      }
+      e = list_next(e);
+      //msg ("Got a waiting thread");
+    }
+    
+    //struct priority *firstDonatedPrio = list_entry (list_pop_front(&t->donations_received), struct priority, elem);
+    //msg ("Base priority: %d", t->base_priority);
+    //msg ("Cur thread base: %d", thread_current()->base_priority);
+    t->priority = t->base_priority;
+    
+    refresh_priority (t);
+  }
+  //refresh_priority (t);
+  
+  //if (t->donated_to != NULL)
+    //remove_donation (t->donated_to, lock);
   //intr_set_level (old_level);
 }
