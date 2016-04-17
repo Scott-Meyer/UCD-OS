@@ -111,6 +111,7 @@ thread_start (void)
   sema_init (&idle_started, 0);
   thread_create ("idle", PRI_MIN, idle, &idle_started);
 
+
   /* Start preemptive thread scheduling. */
   intr_enable ();
 
@@ -183,6 +184,7 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -205,6 +207,7 @@ thread_create (const char *name, int priority,
   /* Make sure highest priority thread is running.
      This is needed in case this thread has higher priority. */
   check_thread_priority ();
+
 
   return tid;
 }
@@ -347,6 +350,7 @@ void thread_set_priority (int new_priority) {
   enum intr_level old_level = intr_disable ();
   
   thread_current ()->base_priority = new_priority;
+  //thread_current ()->priority = new_priority;
   refresh_priority (thread_current ());
   check_thread_priority ();
   
@@ -486,6 +490,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  t->base_priority = priority;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -629,9 +634,12 @@ bool
 priority_less (const struct list_elem *a_, const struct list_elem *b_,
             void *aux UNUSED) 
 {
+  msg ("In priority less");
   const struct priority *a = list_entry (a_, struct priority, elem);
   const struct priority *b = list_entry (b_, struct priority, elem);
   
+  msg ("A priority: %d", a->priority);
+  msg ("B priority: %d", b->priority);
   return a->priority > b->priority;
 }
 
@@ -639,7 +647,7 @@ priority_less (const struct list_elem *a_, const struct list_elem *b_,
 void check_thread_priority (void) {
   // Disable interrupts while we process
   enum intr_level old_level = intr_disable ();
-  
+   
   // Only process if the ready_list has items in it
   if (!list_empty(&ready_list)) {
     
@@ -659,31 +667,48 @@ void check_thread_priority (void) {
 }
 
 void refresh_priority (struct thread *t) {
-  msg ("In refresh");
   if (!list_empty(&t->donations_received)) {
     struct priority *firstDonatedPrio = list_entry (list_begin(&t->donations_received), struct priority, elem);
     if (firstDonatedPrio->priority > t->priority)
       t->priority = firstDonatedPrio->priority;
-  }
-  
-  if (t->base_priority > t->priority) {
-    t->priority = t->base_priority;
+    if (t->base_priority > t->priority)
+      t->priority = t->base_priority;
+  } else {
+    if (t->base_priority != t->priority)
+      t->priority = t->base_priority;
   }
 }
 
 /* Donate priority to thread, and linked threads */
 void donate_priority (struct thread *t) {
+  msg ("In donate");
+  enum intr_level old_level = intr_disable ();
   struct thread *cur = thread_current ();
   
   // Check if current thread has higher priority
   // Or if the target thread is using a donated priority
   if (cur->priority > t->priority || t->base_priority != t->priority) {
+    msg ("In  the if");
     // Donate
-    struct priority *prioStruct;
-    prioStruct->priority = cur->priority;
-    list_insert_ordered (&t->donations_received, &prioStruct->elem, priority_less, NULL);
+    t->donated_to = cur;
+    struct priority prioStruct;
+    msg ("Before assignign priority to struct");
+    prioStruct.priority = cur->priority;
+    msg ("The priority: %d", prioStruct.priority);
+    msg ("Before insert");
+    if (!list_empty(&t->donations_received)) {
+      msg ("List not empty");
+      list_insert_ordered (&t->donations_received, &prioStruct.elem, priority_less, NULL);
+    } else {
+      msg ("List empty");
+      list_push_back (&t->donations_received, &prioStruct.elem);
+    }
+      
+    msg ("After insert");
     refresh_priority (t);
     if (t->donated_to != NULL)
       donate_priority (t->donated_to);
   }
+  
+  intr_set_level (old_level);
 }

@@ -205,7 +205,7 @@ lock_acquire (struct lock *lock)
   if (lock->holder != NULL) {
     // Someone has the lock, we need to donate to them
     // Donate priority to the thread holding the lock
-    //donate_priority (&lock->holder);
+    donate_priority (&lock->holder);
   }
   
   sema_down (&lock->semaphore);
