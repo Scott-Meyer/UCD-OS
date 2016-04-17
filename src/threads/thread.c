@@ -346,6 +346,10 @@ thread_foreach (thread_action_func *func, void *aux)
 /* Sets the current thread's priority to new_priority. If the current thread
 no longer has the highest priority, yields. */
 void thread_set_priority (int new_priority) {
+  // Don't process if in mlfqs mode
+  if (thread_mlfqs)
+    return;
+  
   // Disable interrupts while we process this thread
   enum intr_level old_level = intr_disable ();
   

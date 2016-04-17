@@ -207,28 +207,15 @@ lock_acquire (struct lock *lock)
   
   enum intr_level old_level = intr_disable ();
   
-  if (lock->holder != NULL) {
+  if (!thread_mlfqs && lock->holder != NULL) {
     // Someone has the lock, we need to donate to them
     // Donate priority to the thread holding the lock
-    //enum intr_level old_level = intr_disable ();
     donate_priority (lock->holder, thread_current ());
-    //intr_set_level (old_level);
-    //msg ("Donated priority");
-    //thread_current()->priority = 35;
-    //lock->holder->priority = 35;
-    //check_thread_priority ();
   }
   
   sema_down (&lock->semaphore);  
   lock->holder = thread_current ();
   
-  if (thread_current ()->donated_to != NULL) {
-    // We've acquired this lock after donating
-    // Release the donation
-    //enum intr_level old_level = intr_disable ();
-    //remove_donation (thread_current ()->donated_to);
-    //intr_set_level (old_level);
-  }
   intr_set_level (old_level);
 }
 
@@ -266,7 +253,7 @@ lock_release (struct lock *lock)
   enum intr_level old_level = intr_disable ();
   
   //refresh_priority (lock->holder);
-  if (!list_empty(&lock->semaphore.waiters)) {
+  if (!thread_mlfqs && !list_empty(&lock->semaphore.waiters)) {
     remove_donation(thread_current(), lock);
   }
   
