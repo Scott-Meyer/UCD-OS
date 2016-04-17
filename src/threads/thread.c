@@ -634,12 +634,9 @@ bool
 priority_less (const struct list_elem *a_, const struct list_elem *b_,
             void *aux UNUSED) 
 {
-  msg ("In priority less");
   const struct priority *a = list_entry (a_, struct priority, elem);
   const struct priority *b = list_entry (b_, struct priority, elem);
   
-  msg ("A priority: %d", a->priority);
-  msg ("B priority: %d", b->priority);
   return a->priority > b->priority;
 }
 
@@ -647,7 +644,7 @@ priority_less (const struct list_elem *a_, const struct list_elem *b_,
 void check_thread_priority (void) {
   // Disable interrupts while we process
   enum intr_level old_level = intr_disable ();
-   
+
   // Only process if the ready_list has items in it
   if (!list_empty(&ready_list)) {
     
@@ -681,34 +678,23 @@ void refresh_priority (struct thread *t) {
 
 /* Donate priority to thread, and linked threads */
 void donate_priority (struct thread *t) {
-  msg ("In donate");
-  enum intr_level old_level = intr_disable ();
+  //enum intr_level old_level = intr_disable ();
   struct thread *cur = thread_current ();
   
   // Check if current thread has higher priority
   // Or if the target thread is using a donated priority
   if (cur->priority > t->priority || t->base_priority != t->priority) {
-    msg ("In  the if");
     // Donate
     t->donated_to = cur;
     struct priority prioStruct;
-    msg ("Before assignign priority to struct");
     prioStruct.priority = cur->priority;
-    msg ("The priority: %d", prioStruct.priority);
-    msg ("Before insert");
-    if (!list_empty(&t->donations_received)) {
-      msg ("List not empty");
-      list_insert_ordered (&t->donations_received, &prioStruct.elem, priority_less, NULL);
-    } else {
-      msg ("List empty");
-      list_push_back (&t->donations_received, &prioStruct.elem);
-    }
+
+    list_insert_ordered (&t->donations_received, &prioStruct.elem, priority_less, NULL);
       
-    msg ("After insert");
     refresh_priority (t);
     if (t->donated_to != NULL)
       donate_priority (t->donated_to);
   }
   
-  intr_set_level (old_level);
+  //intr_set_level (old_level);
 }
