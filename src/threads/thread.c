@@ -70,6 +70,7 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+void refresh_priority (struct thread *t);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -109,6 +110,7 @@ thread_start (void)
   struct semaphore idle_started;
   sema_init (&idle_started, 0);
   thread_create ("idle", PRI_MIN, idle, &idle_started);
+
 
   /* Start preemptive thread scheduling. */
   intr_enable ();
@@ -182,6 +184,7 @@ thread_create (const char *name, int priority,
   /* Initialize thread. */
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
+  
 
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
@@ -204,6 +207,7 @@ thread_create (const char *name, int priority,
   /* Make sure highest priority thread is running.
      This is needed in case this thread has higher priority. */
   check_thread_priority ();
+
 
   return tid;
 }
@@ -345,7 +349,9 @@ void thread_set_priority (int new_priority) {
   // Disable interrupts while we process this thread
   enum intr_level old_level = intr_disable ();
   
-  thread_current ()->priority = new_priority;
+  thread_current ()->base_priority = new_priority;
+  //thread_current ()->priority = new_priority;
+  refresh_priority (thread_current ());
   check_thread_priority ();
   
   // Turn interrupts back on
@@ -484,9 +490,15 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  t->base_priority = priority;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
+  
+  // Donation stuff
+  t->base_priority = priority;
+  list_init(&t->donations_received);
+  
   intr_set_level (old_level);
 }
 
@@ -617,11 +629,22 @@ thread_priority_less (const struct list_elem *a_, const struct list_elem *b_,
   return a->priority > b->priority;
 }
 
+
+bool
+priority_less (const struct list_elem *a_, const struct list_elem *b_,
+            void *aux UNUSED) 
+{
+  const struct priority *a = list_entry (a_, struct priority, elem);
+  const struct priority *b = list_entry (b_, struct priority, elem);
+  
+  return a->priority > b->priority;
+}
+
 /* Make sure highest priority thread is running */
 void check_thread_priority (void) {
   // Disable interrupts while we process
   enum intr_level old_level = intr_disable ();
-  
+
   // Only process if the ready_list has items in it
   if (!list_empty(&ready_list)) {
     
@@ -638,4 +661,78 @@ void check_thread_priority (void) {
   
   // Turn interrupts back on
   intr_set_level (old_level);
+}
+
+void refresh_priority (struct thread *t) {
+  if (!list_empty(&t->donations_received)) {
+    struct priority *firstDonatedPrio = list_entry (list_begin(&t->donations_received), struct priority, elem);
+
+    if (firstDonatedPrio->priority > t->priority) {
+      t->priority = firstDonatedPrio->priority;
+    }
+      
+    if (t->base_priority > t->priority)
+      t->priority = t->base_priority;
+  } else {
+    if (t->base_priority != t->priority)
+      t->priority = t->base_priority;
+  }
+}
+
+/* Donate priority to thread, and linked threads */
+void donate_priority (struct thread *t, struct thread *f) {
+  
+  // Check if current thread has higher priority
+  // Or if the target thread is using a donated priority
+  if (f->priority > t->priority || t->base_priority != t->priority) {
+    // Donate
+    f->donated_to = t;
+    struct priority *prioStruct;
+    prioStruct = palloc_get_page (PAL_ZERO);
+    prioStruct->priority = f->priority;
+    list_insert_ordered (&t->donations_received, &prioStruct->elem, priority_less, NULL);
+  }
+  
+    refresh_priority (t);
+    if (t->donated_to != NULL)
+      donate_priority (t->donated_to, t);
+  
+}
+
+/* Rmove priority from thread, and linked threads */
+void remove_donation (struct thread *t, struct lock *lock) {
+  
+  if (!list_empty(&t->donations_received)) {
+                                
+    struct list_elem *e = list_begin(&lock->semaphore.waiters);
+    struct list_elem *next;
+    struct thread *temp = list_entry(e, struct thread, elem);
+    
+    while (e != list_end(&lock->semaphore.waiters)) {
+      struct thread *temp = list_entry(e, struct thread, elem);
+
+      if (temp->priority > t->base_priority) {
+        struct list_elem *le = list_begin(&t->donations_received);
+        while (le != list_end(&t->donations_received)) {
+          struct priority *p = list_entry(le, struct priority, elem);
+
+          if (temp->priority == p->priority) {
+            le = list_remove(le);
+          } else if (temp->priority != temp->base_priority) {
+            le = list_remove(le);
+          } else {
+            le = list_next(le);
+          }
+        }
+      }
+      e = list_next(e);
+    }
+    
+    t->priority = t->base_priority;
+    
+    refresh_priority (t);
+  }
+    t->priority = t->base_priority;
+    
+    refresh_priority (t);
 }
