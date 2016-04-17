@@ -741,10 +741,12 @@ void remove_donation (struct thread *t, struct lock *lock) {
           //msg ("Donated priority found: %d", p->priority);
           //msg ("Waiter priority: %d", temp->priority);
           //msg ("Waiter base priority: %d", temp->base_priority);
-          if (temp->priority >= p->priority) {
+          if (temp->priority == p->priority) {
             le = list_remove(le);
             //msg ("Removed priority: %d", p->priority);
             //le = list_next(le);
+          } else if (temp->priority != temp->base_priority) {
+            le = list_remove(le);
           } else {
             le = list_next(le);
             //msg ("Did not remove priority: %d", p->priority);
