@@ -208,7 +208,7 @@ lock_acquire (struct lock *lock)
     // Someone has the lock, we need to donate to them
     // Donate priority to the thread holding the lock
     //enum intr_level old_level = intr_disable ();
-    donate_priority (lock->holder);
+    donate_priority (lock->holder, thread_current ());
     //intr_set_level (old_level);
     //msg ("Donated priority");
     //thread_current()->priority = 35;

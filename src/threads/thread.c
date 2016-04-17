@@ -684,24 +684,32 @@ void refresh_priority (struct thread *t) {
 }
 
 /* Donate priority to thread, and linked threads */
-void donate_priority (struct thread *t) {
+void donate_priority (struct thread *t, struct thread *f) {
   //enum intr_level old_level = intr_disable ();
-  struct thread *cur = thread_current ();
+  //struct thread *cur = thread_current ();
+  //msg ("T: %d", t);
   
   // Check if current thread has higher priority
   // Or if the target thread is using a donated priority
-  if (cur->priority > t->priority || t->base_priority != t->priority) {
+  if (f->priority > t->priority || t->base_priority != t->priority) {
     // Donate
-    cur->donated_to = t;
-    struct priority prioStruct;
-    prioStruct.priority = cur->priority;
-
-    list_insert_ordered (&t->donations_received, &prioStruct.elem, priority_less, NULL);
-      
-    refresh_priority (t);
-    if (t->donated_to != NULL)
-      donate_priority (t->donated_to);
+    f->donated_to = t;
+    struct priority *prioStruct;
+    prioStruct = palloc_get_page (PAL_ZERO);
+    //msg ("Made struct");
+    //msg ("F priority: %d", f->priority);
+    prioStruct->priority = f->priority;
+    //msg ("assigned priority");
+    //msg ("Inserting priority: %d", prioStruct.priority);
+    list_insert_ordered (&t->donations_received, &prioStruct->elem, priority_less, NULL);
+    //msg ("Inserted list elem: %d", &prioStruct->elem);
+    //msg ("Inserted priority: %d", prioStruct->priority);
   }
+  
+    refresh_priority (t);
+    //msg ("Donated to: %d", t->donated_to);
+    if (t->donated_to != NULL)
+      donate_priority (t->donated_to, t);
   
   //intr_set_level (old_level);
 }
@@ -724,13 +732,31 @@ void remove_donation (struct thread *t, struct lock *lock) {
     while (e != list_end(&lock->semaphore.waiters)) {
       struct thread *temp = list_entry(e, struct thread, elem);
       //msg ("Temp thread prio: %d", temp->priority);
+      //msg ("Temp base prio: %d", temp->base_priority);
       if (temp->priority > t->base_priority) {
-        struct priority *firstDonatedPrio = list_entry (list_pop_front(&t->donations_received), struct priority, elem);
+        struct list_elem *le = list_begin(&t->donations_received);
+        while (le != list_end(&t->donations_received)) {
+          //msg ("The list element: %d", le);
+          struct priority *p = list_entry(le, struct priority, elem);
+          //msg ("Donated priority found: %d", p->priority);
+          //msg ("Waiter priority: %d", temp->priority);
+          //msg ("Waiter base priority: %d", temp->base_priority);
+          if (temp->priority >= p->priority) {
+            le = list_remove(le);
+            //msg ("Removed priority: %d", p->priority);
+            //le = list_next(le);
+          } else {
+            le = list_next(le);
+            //msg ("Did not remove priority: %d", p->priority);
+          }
+        }
+        //struct priority *firstDonatedPrio = list_entry (list_pop_front(&t->donations_received), struct priority, elem);
         //msg ("Popped priority: %d", firstDonatedPrio->priority);
       }
       e = list_next(e);
       //msg ("Got a waiting thread");
     }
+    //msg ("Exiting the waiters loop");
     
     //struct priority *firstDonatedPrio = list_entry (list_pop_front(&t->donations_received), struct priority, elem);
     //msg ("Base priority: %d", t->base_priority);
@@ -739,6 +765,9 @@ void remove_donation (struct thread *t, struct lock *lock) {
     
     refresh_priority (t);
   }
+    t->priority = t->base_priority;
+    
+    refresh_priority (t);
   //refresh_priority (t);
   
   //if (t->donated_to != NULL)

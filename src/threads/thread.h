@@ -155,7 +155,7 @@ bool thread_priority_less (const struct list_elem *a_, const struct list_elem *b
 bool priority_less (const struct list_elem *a_, const struct list_elem *b_,
             void *aux UNUSED);
 void check_thread_priority (void);
-void donate_priority (struct thread *t);
+void donate_priority (struct thread *t, struct thread *f);
 //void remove_donation (struct thread *t, struct lock *lock);
 
 #endif /* threads/thread.h */
